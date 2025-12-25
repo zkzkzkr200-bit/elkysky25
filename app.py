@@ -31,6 +31,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- 유틸리티 함수: 한글(영어)에서 영어만 추출 ---
+def extract_eng(text):
+    if "(" in text and ")" in text:
+        return text.split("(")[1].split(")")[0]
+    return text
+
 # --- 세션 관리 ---
 if 'seed_value' not in st.session_state:
     st.session_state.seed_value = random.randint(0, 999999)
@@ -134,13 +140,78 @@ with col_right:
 # 3. 로직: 프롬프트 조립 및 생성
 # ===========================
 if generate_btn:
-    # 1. 프롬프트 생성 로직
-    def extract_eng(text):
-        if "(" in text and ")" in text:
-            return text.split("(")[1].split(")")[0]
-        return text
+    # 1. 프롬프트 생성 (안전하게 변수 분리)
+    eng_gender = extract_eng(gender)
+    eng_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
+    eng_body = extract_eng(body_type)
+    eng_fashion = f"{extract_eng(fashion_style)}, {clothes_detail}"
+    eng_camera = f"{extract_eng(view_angle)}, {extract_eng(lighting)} lighting"
+    
+    # 최종 문장 합치기
+    full_prompt = (
+        f"Best quality, masterpiece, photorealistic, 8k uhd, raw photo. "
+        f"{eng_gender}, {eng_hair}, {eng_body} body. "
+        f"wearing {eng_fashion}. {eng_camera}. "
+        f"Background is {background_text}."
+    )
+    
+    # 2. API 호출
+    try:
+        with st.spinner("AI 모델 섭외 중... (첫 시도는 1분 정도 걸릴 수 있습니다) 📸"):
+            
+            # 모델 ID: RealVisXL V4.0 Lightning (공식 검증 버전)
+            model_id = "adirik/realvisxl-v4.0-lightning:2ef27001faad83347bf7a4186c7a39bb162380c5d7fd1d0bf29fe08410229559"
+            
+            input_data = {
+                "prompt": full_prompt,
+                "negative_prompt": "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
+                "width": 768, 
+                "height": 1152,
+                "seed": st.session_state.seed_value,
+                "scheduler": "DPM++_SDE_Karras",
+                "guidance_scale": 2.0,
+                "num_inference_steps": 6,
+                "disable_safety_checker": not use_safety
+            }
 
-    p_gender = extract_eng(gender)
-    p_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
-    p_body = extract_eng(body_type)
-    p_fashion = f"{
+            if uploaded_file:
+                input_data["image"] = uploaded_file
+                input_data["prompt_strength"] = strength_val
+
+            # 결과 받기
+            output = replicate.run(model_id, input=input_data)
+            
+            # 결과 처리 (URL이든 파일이든 모두 대응)
+            image_data = None
+            if output:
+                # 결과가 리스트라면 첫 번째 것만 가져옴
+                result_item = output[0] if isinstance(output, list) else output
+
+                # (1) 파일 객체인 경우
+                if hasattr(result_item, "read"):
+                    image_data = result_item.read()
+                # (2) URL 주소인 경우
+                elif isinstance(result_item, str) and result_item.startswith("http"):
+                    image_data = requests.get(result_item).content
+                
+                # 이미지 표시
+                if image_data:
+                    st.balloons()
+                    st.image(image_data, use_container_width=True)
+                    st.success(f"촬영 완료! (Seed: {st.session_state.seed_value})")
+                    
+                    st.download_button(
+                        label="⬇️ 원본 다운로드",
+                        data=io.BytesIO(image_data),
+                        file_name=f"kweb_studio_{st.session_state.seed_value}.png",
+                        mime="image/png"
+                    )
+                    
+                    with st.expander("🔍 AI가 받은 실제 주문서(Prompt) 보기"):
+                        st.code(full_prompt)
+
+    except replicate.exceptions.ReplicateError as e:
+        st.error(f"API 에러: {e}")
+        st.warning("팁: 결제 카드가 등록되어 있는지, 혹은 한도가 초과되지 않았는지 확인해주세요.")
+    except Exception as e:
+        st.error(f"시스템 에러: {e}")

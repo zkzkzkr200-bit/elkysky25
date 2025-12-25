@@ -6,9 +6,9 @@ from PIL import Image
 
 # --- 페이지 설정 ---
 st.set_page_config(
-    page_title="K-Web Pro Master",
+    page_title="K-Web Pro Studio",
     page_icon="📸",
-    layout="wide", # 가로로 넓게 보기
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -134,8 +134,7 @@ with col_right:
 # 3. 로직: 프롬프트 조립기
 # ===========================
 if generate_btn:
-    # 1. 한국어 선택지 -> 영어 프롬프트 변환 (핵심 로직)
-    # 괄호 안의 영어만 추출하는 함수
+    # 1. 한국어 선택지 -> 영어 프롬프트 변환
     def extract_eng(text):
         if "(" in text and ")" in text:
             return text.split("(")[1].split(")")[0]
@@ -147,29 +146,27 @@ if generate_btn:
     p_fashion = f"{extract_eng(fashion_style)}, {clothes_detail}"
     p_camera = f"{extract_eng(view_angle)}, {extract_eng(lighting)} lighting"
     
-    # 최종 프롬프트 합체
     full_prompt = f"Best quality, masterpiece, photorealistic, 8k uhd, raw photo. {p_gender}, {p_hair}, {p_body} body. wearing {p_fashion}. {p_camera}. Background is {background_text}."
     
     # 2. API 호출
     try:
         with st.spinner("AI 모델 섭외 중... 조명 세팅 중... 📸"):
             
-            # RealVisXL V4.0 Lightning 모델 사용
-            model_id = "lucataco/realvisxl-v4.0-lightning:7d04e4c25143093238964724451662c53a819c4d922097e887e07675f91753c1"
+            # [수정됨] RealVisXL V3.0 Turbo (가장 안정적이고 에러 없는 버전)
+            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
             
             input_data = {
                 "prompt": full_prompt,
                 "negative_prompt": "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
-                "width": 896, # 9:16 비율에 가까운 고화질
+                "width": 768, 
                 "height": 1152,
                 "seed": st.session_state.seed_value,
                 "scheduler": "K_EULER_ANCESTRAL",
-                "guidance_scale": 3.0,
-                "num_inference_steps": 20,
-                "disable_safety_checker": not use_safety # 사용자가 끄면 해제
+                "guidance_scale": 7.0, # V3.0에 맞는 값으로 수정
+                "num_inference_steps": 25,
+                "disable_safety_checker": not use_safety
             }
 
-            # [수정된 부분] 여기에 콜론(:)을 넣고 변수명을 맞췄습니다!
             if uploaded_file:
                 input_data["image"] = uploaded_file
                 input_data["prompt_strength"] = strength_val
@@ -177,11 +174,10 @@ if generate_btn:
             output = replicate.run(model_id, input=input_data)
             
             if output:
-                st.balloons() # 성공 축하 효과
+                st.balloons()
                 st.image(output[0], use_container_width=True)
                 st.success(f"촬영 완료! (Seed: {st.session_state.seed_value})")
                 
-                # 다운로드 버튼
                 st.download_button(
                     label="⬇️ 원본 다운로드",
                     data=io.BytesIO(replicate.httpx.get(output[0]).content),
@@ -192,5 +188,8 @@ if generate_btn:
                 with st.expander("🔍 AI가 받은 실제 주문서(Prompt) 보기"):
                     st.code(full_prompt)
 
+    except replicate.exceptions.ReplicateError as e:
+        st.error(f"API 에러: {e}")
+        st.warning("팁: 결제 카드가 등록되어 있는지, 혹은 한도가 초과되지 않았는지 확인해주세요.")
     except Exception as e:
-        st.error(f"촬영 실패: {e}")
+        st.error(f"시스템 에러: {e}")

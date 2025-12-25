@@ -68,7 +68,7 @@ with st.sidebar:
     st.info("Tip: 필터를 끄면 검열이 사라지지만 책임은 본인에게 있습니다.")
 
 # ===========================
-# 2. 메인 화면: 디테일 UI 복원
+# 2. 메인 화면: 디테일 UI
 # ===========================
 st.title("📸 K-Web Pro Studio")
 st.caption("선택만 하세요. 프롬프트는 AI가 만듭니다.")
@@ -131,10 +131,10 @@ with col_right:
     generate_btn = st.button("✨ 스튜디오 촬영 시작 (Generate)")
 
 # ===========================
-# 3. 로직: 프롬프트 조립기
+# 3. 로직: 프롬프트 조립 및 생성
 # ===========================
 if generate_btn:
-    # 1. 한국어 선택지 -> 영어 프롬프트 변환
+    # 1. 프롬프트 생성 로직
     def extract_eng(text):
         if "(" in text and ")" in text:
             return text.split("(")[1].split(")")[0]
@@ -143,58 +143,4 @@ if generate_btn:
     p_gender = extract_eng(gender)
     p_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
     p_body = extract_eng(body_type)
-    p_fashion = f"{extract_eng(fashion_style)}, {clothes_detail}"
-    p_camera = f"{extract_eng(view_angle)}, {extract_eng(lighting)} lighting"
-    
-    full_prompt = f"Best quality, masterpiece, photorealistic, 8k uhd, raw photo. {p_gender}, {p_hair}, {p_body} body. wearing {p_fashion}. {p_camera}. Background is {background_text}."
-    
-    # 2. API 호출
-    try:
-        with st.spinner("AI 모델 섭외 중... 조명 세팅 중... 📸"):
-            
-            # [✅ 최종 검증된 모델] adirik/realvisxl-v4.0-lightning
-            # 이 해시값(2ef2...)은 현재 Replicate에서 확실하게 작동하는 버전입니다.
-            model_id = "adirik/realvisxl-v4.0-lightning:2ef27001faad83347bf7a4186c7a39bb162380c5d7fd1d0bf29fe08410229559"
-            
-            input_data = {
-                "prompt": full_prompt,
-                "negative_prompt": "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
-                "width": 768, 
-                "height": 1152,
-                "seed": st.session_state.seed_value,
-                "scheduler": "DPM++_SDE_Karras", # 이 모델에 최적화된 스케줄러
-                "guidance_scale": 2.0, # Lightning 모델은 낮은 수치(1.5~3)가 필수입니다.
-                "num_inference_steps": 6, # Lightning 모델은 적은 스텝(4~8)으로 충분합니다.
-                "disable_safety_checker": not use_safety
-            }
-
-            if uploaded_file:
-                input_data["image"] = uploaded_file
-                input_data["prompt_strength"] = strength_val
-
-            output = replicate.run(model_id, input=input_data)
-            
-            if output:
-                st.balloons()
-                st.image(output[0], use_container_width=True)
-                st.success(f"촬영 완료! (Seed: {st.session_state.seed_value})")
-                
-                # 다운로드 로직 (requests 사용으로 안정성 확보)
-                image_url = output[0]
-                image_data = requests.get(image_url).content
-                
-                st.download_button(
-                    label="⬇️ 원본 다운로드",
-                    data=io.BytesIO(image_data),
-                    file_name=f"kweb_studio_{st.session_state.seed_value}.png",
-                    mime="image/png"
-                )
-                
-                with st.expander("🔍 AI가 받은 실제 주문서(Prompt) 보기"):
-                    st.code(full_prompt)
-
-    except replicate.exceptions.ReplicateError as e:
-        st.error(f"API 에러: {e}")
-        st.warning("팁: 결제 카드가 등록되어 있는지, 혹은 한도가 초과되지 않았는지 확인해주세요.")
-    except Exception as e:
-        st.error(f"시스템 에러: {e}")
+    p_fashion = f"{

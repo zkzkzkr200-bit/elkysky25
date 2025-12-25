@@ -6,24 +6,27 @@ from PIL import Image
 
 # --- 페이지 설정 ---
 st.set_page_config(
-    page_title="K-Web Pro (Uncensored)",
-    page_icon="⚡",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_title="K-Web Pro Master",
+    page_icon="📸",
+    layout="wide", # 가로로 넓게 보기
+    initial_sidebar_state="expanded"
 )
 
-# --- 스타일 (모바일/PC 공용) ---
+# --- 스타일 (다크모드 & 모바일 최적화) ---
 st.markdown("""
 <style>
     .stButton > button {
         width: 100%;
-        padding: 15px;
+        padding: 20px;
         font-weight: bold;
-        font-size: 18px;
-        border-radius: 10px;
-        background: linear-gradient(45deg, #FF4B4B, #FF914D);
+        font-size: 20px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #FF4B4B 0%, #FF914D 100%);
         color: white;
         border: none;
+    }
+    .stSelectbox, .stTextInput {
+        font-size: 1.1em;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -33,103 +36,89 @@ if 'seed_value' not in st.session_state:
     st.session_state.seed_value = random.randint(0, 999999)
 
 # ===========================
-# 1. 사이드바 설정
+# 1. 사이드바: 설정 및 시드
 # ===========================
 with st.sidebar:
-    st.header("⚙️ 스튜디오 설정")
+    st.title("⚙️ 스튜디오 설정")
     
-    # [시드 제어]
-    st.subheader("🎲 시드 (Seed)")
+    # API 키 상태 표시
+    if "REPLICATE_API_TOKEN" in st.secrets:
+        st.success("API 연결됨 (Replicate) ✅")
+    else:
+        st.error("API 키가 없습니다! 🚨")
+        st.stop()
+        
+    st.divider()
+    
+    # 시드 제어
+    st.subheader("🎲 캐릭터 고정 (Seed)")
     col1, col2 = st.columns([1, 2])
     with col1:
-        if st.button("랜덤"):
+        if st.button("New"):
             st.session_state.seed_value = random.randint(0, 999999)
             st.rerun()
     with col2:
-        st.session_state.seed_value = st.number_input("Seed", value=st.session_state.seed_value, label_visibility="collapsed")
-    st.caption(f"Current Seed: {st.session_state.seed_value}")
+        st.number_input("Seed 번호", value=st.session_state.seed_value, disabled=True)
+    st.caption("이 번호를 기억하면 같은 얼굴을 다시 부를 수 있습니다.")
     
     st.divider()
-    st.info("Tip: RealVisXL V4.0 Lightning 모델 사용 중 (검열이 적고 실사에 강력함)")
-
-# ===========================
-# 2. 메인 화면
-# ===========================
-st.title("⚡ K-Web Pro")
-st.caption("Replicate API 기반 / 고화질 / 자유 생성")
-
-# API 키 체크
-if "REPLICATE_API_TOKEN" not in st.secrets:
-    st.error("🚨 치명적 오류: Secrets에 API 토큰이 없습니다.")
-    st.info("Streamlit 대시보드에서 'REPLICATE_API_TOKEN'을 설정해주세요.")
-    st.stop()
-
-st.divider()
-
-# [A] 이미지 업로드 (Img2Img)
-with st.expander("📸 [선택] 사진 업로드하여 변형하기 (Img2Img)", expanded=False):
-    uploaded_file = st.file_uploader("참조할 이미지를 선택하세요", type=["jpg", "png", "jpeg", "webp"])
-    strength_val = 0.65
     
-    if uploaded_file:
-        st.image(uploaded_file, caption="참조 이미지", use_container_width=True)
-        strength_val = st.slider("변형 강도 (Strength)", 0.1, 1.0, 0.65, help="낮으면 원본 유지, 높으면 창의적 변형")
+    # 고급: 안전 필터
+    use_safety = st.toggle("안전 필터 사용 (Safety Filter)", value=False)
+    st.info("Tip: 필터를 끄면 검열이 사라지지만 책임은 본인에게 있습니다.")
 
-st.divider()
+# ===========================
+# 2. 메인 화면: 디테일 UI 복원
+# ===========================
+st.title("📸 K-Web Pro Studio")
+st.caption("선택만 하세요. 프롬프트는 AI가 만듭니다.")
 
-# [B] 프롬프트 입력
-base_prompt = "Best quality, masterpiece, photorealistic, 8k uhd, raw photo, realistic lighting, "
-user_prompt = st.text_area("주문 내용 (영어 입력 권장)", placeholder="e.g. A portrait of a woman in black dress, city night background", height=100)
-negative_prompt = "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+col_left, col_right = st.columns([1, 1])
 
-# [C] 생성 버튼
-if st.button("🚀 이미지 생성 (Start)"):
-    if not user_prompt:
-        st.warning("내용을 입력해주세요!")
-    else:
-        try:
-            with st.spinner("AI가 그리는 중... (약 10초)"):
-                
-                # 1. 모델 ID (RealVisXL V4.0 Lightning)
-                model_id = "lucataco/realvisxl-v4.0-lightning:7d04e4c25143093238964724451662c53a819c4d922097e887e07675f91753c1"
-                
-                # 2. 입력 데이터 구성
-                input_data = {
-                    "prompt": base_prompt + user_prompt,
-                    "negative_prompt": negative_prompt,
-                    "width": 768,
-                    "height": 1152,
-                    "seed": st.session_state.seed_value,
-                    "scheduler": "K_EULER_ANCESTRAL",
-                    "guidance_scale": 3.0, # Lightning 모델은 낮은 수치가 자연스러움
-                    "num_inference_steps": 20
-                }
+with col_left:
+    st.subheader("1️⃣ 모델 설정 (Identity)")
+    
+    # [A] 기본 외모
+    with st.container(border=True):
+        st.markdown("#### 👤 헤어 및 외모")
+        
+        gender = st.radio("성별/나이대", 
+            ["20대 여성 (20yo Woman)", "20대 남성 (20yo Man)", "10대 소녀 (Teenage Girl)", "30대 여성 (30yo Woman)"], 
+            horizontal=True
+        )
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            hair_style = st.selectbox("머리 모양", 
+                ["긴 생머리 (Long straight)", "웨이브 펌 (Wavy perm)", "단발 (Bob cut)", "포니테일 (Ponytail)", "똥머리 (Bun)", "땋은 머리 (Braids)"]
+            )
+        with c2:
+            hair_color = st.selectbox("머리색", 
+                ["자연 갈색 (Brown)", "검정 (Black)", "금발 (Blonde)", "은발 (Silver)", "빨강 (Red)", "파스텔 핑크 (Pink)"]
+            )
+            
+        body_type = st.select_slider("체형 선택", options=["마름 (Slim)", "보통 (Fit)", "글래머 (Curvy)", "근육질 (Muscular)"], value="보통 (Fit)")
 
-                # 3. 이미지 업로드 처리 (호환성 강화)
-                if uploaded_file:
-                    input_data["image"] = uploaded_file
-                    input_data["prompt_strength"] = strength_val
-                
-                # 4. API 호출
-                output = replicate.run(model_id, input=input_data)
-                
-                # 5. 결과 출력
-                if output:
-                    image_url = output[0]
-                    st.success("완성!")
-                    st.image(image_url, use_container_width=True)
-                    
-                    # 다운로드 버튼
-                    st.download_button(
-                        label="⬇️ 이미지 다운로드",
-                        data=io.BytesIO(replicate.httpx.get(image_url).content),
-                        file_name=f"kweb_{st.session_state.seed_value}.png",
-                        mime="image/png"
-                    )
+    # [B] 패션 스타일
+    with st.expander("👗 패션 (Fashion) - 열기", expanded=False):
+        fashion_style = st.selectbox("스타일 테마", 
+            ["캐주얼 (Casual)", "오피스룩 (Office)", "스트릿 패션 (Street)", "파티 드레스 (Party Dress)", "수영복 (Swimwear)", "판타지 갑옷 (Fantasy Armor)", "교복 (School Uniform)"]
+        )
+        clothes_detail = st.text_input("의상 디테일 (선택)", placeholder="예: 흰색 셔츠, 청바지, 빨간 목도리")
 
-        except replicate.exceptions.ReplicateError as e:
-            st.error(f"Replicate API 오류: {e}")
-            if "NSFW" in str(e):
-                st.warning("모델의 기본 필터에 감지되었습니다. 프롬프트를 약간 수정해보세요.")
-        except Exception as e:
-            st.error(f"시스템 오류: {e}")
+    # [C] 구도 및 시선
+    with st.expander("🎥 구도 및 시선 (Camera)", expanded=False):
+        view_angle = st.selectbox("촬영 앵글", ["정면 (Front view)", "측면 (Side view)", "로우 앵글 (Low angle)", "셀카 구도 (Selfie)"])
+        lighting = st.selectbox("조명 분위기", ["자연광 (Natural)", "스튜디오 조명 (Studio)", "네온 사인 (Neon)", "노을 (Sunset)"])
+
+with col_right:
+    st.subheader("2️⃣ 배경 및 추가요소")
+    
+    # [D] 배경 설정
+    background_text = st.text_area("배경 묘사 (한글 가능)", placeholder="예: 벚꽃이 흩날리는 공원, 비 내리는 강남대로, 고급 호텔 로비", height=100)
+    
+    # [E] 이미지 업로드 (Img2Img)
+    st.markdown("#### 📸 사진 변형 (선택사항)")
+    uploaded_file = st.file_uploader("참조 이미지를 올리면 변형합니다.", type=["jpg", "png", "jpeg"])
+    strength_val = 0.65
+    if uploaded

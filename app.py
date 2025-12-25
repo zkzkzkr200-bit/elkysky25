@@ -118,9 +118,18 @@ with col_left:
             else:
                 style_prompt = "nsfw, hentai, ecchi, anime style, explicit"
 
-    # [B] 캐릭터 외모 (직접 입력 추가)
+    # [B] 캐릭터 외모 (10대 옵션 복구 완료!)
     with st.expander("👤 캐릭터 외모 설정 (열기)", expanded=True):
-        gender = st.radio("성별", ["20대 여성 (20yo Woman)", "20대 남성 (20yo Man)", "30대 여성 (30yo Woman)"], horizontal=True)
+        gender = st.radio("성별/나이", 
+            [
+                "10대 소녀 (Teenage Girl)", 
+                "10대 소년 (Teenage Boy)", 
+                "20대 여성 (20yo Woman)", 
+                "20대 남성 (20yo Man)", 
+                "30대 여성 (30yo Woman)"
+            ], 
+            horizontal=True
+        )
         
         c1, c2 = st.columns(2)
         with c1:
@@ -137,7 +146,7 @@ with col_left:
 with col_right:
     st.subheader("2️⃣ 포즈 & 패션")
     
-    # [C] 자세 설정 (NEW 탭)
+    # [C] 자세 설정
     with st.container(border=True):
         st.markdown("#### 🧘 자세 (Pose)")
         pose_options = [
@@ -193,7 +202,7 @@ if generate_btn:
     else:
         base_negative = "nsfw, nude, naked, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
 
-    # 최종 프롬프트 합체 (변수명 오타 수정됨)
+    # 최종 프롬프트 합체
     full_prompt = (
         f"Best quality, masterpiece, {style_prompt}. "
         f"{eng_gender}, {eng_hair}, {eng_body} body. "

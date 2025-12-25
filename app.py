@@ -31,6 +31,11 @@ st.markdown("""
     div[data-baseweb="input"] {
         border-color: #FF4B4B !important;
     }
+    /* 체크박스 강조 */
+    label[data-baseweb="checkbox"] {
+        font-weight: bold;
+        color: #FF4B4B;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -69,21 +74,17 @@ with st.sidebar:
     with col2:
         st.number_input("Seed 번호", value=st.session_state.seed_value, disabled=True)
     st.caption("이 번호를 기억하면 같은 캐릭터를 다시 부를 수 있습니다.")
-    
-    st.divider()
-    st.info("Tip: '19+ 모드'를 선택하면 자동으로 검열이 해제됩니다.")
 
 # ===========================
 # 2. 메인 화면
 # ===========================
 st.title("🔥 K-Web Pro Ultimate")
-st.caption("화풍, 자세, 외모, 의상을 내 마음대로.")
+st.caption("원하는 스타일을 선택하고, 수위를 조절하세요.")
 
 col_left, col_right = st.columns([1, 1])
 
-# 변수 초기화 (에러 방지용)
+# 변수 초기화
 style_prompt = ""
-is_nsfw_mode = False
 final_pose = ""
 final_outfit = ""
 custom_face = ""
@@ -92,40 +93,41 @@ eng_body = ""
 with col_left:
     st.subheader("1️⃣ 스타일 & 캐릭터")
     
-    # [A] 화풍 선택 (19금 옵션 통합)
+    # [A] 화풍 및 19금 설정 (업데이트됨!)
     with st.container(border=True):
         st.markdown("#### 🎨 화풍 (Art Style)")
+        
+        # 1. 기본 장르 선택
         art_category = st.radio("장르 선택", 
-            ["📸 실사 (Photorealistic)", "🖌️ 2D/일러스트 (Anime)", "🔞 19+ (NSFW)"], 
+            ["📸 실사 (Photorealistic)", "🖌️ 2D/일러스트 (Anime)"], 
             horizontal=True
         )
         
+        # 2. 19금 모드 체크박스 (중복 선택 가능)
+        is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
+        
+        # 스타일 상세 설정
         if "실사" in art_category:
             style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
-            style_prompt = "photorealistic, realistic, 8k uhd, raw photo, dslr"
+            base_style = "photorealistic, realistic, 8k uhd, raw photo, dslr"
+            # 실사 + 19금일 때 추가될 프롬프트
+            nsfw_keywords = "nsfw, sexy, nude, erotic, raw photo, realistic skin texture" if is_nsfw else ""
             
-        elif "2D" in art_category:
+        else: # 2D
             style_detail = st.selectbox("분위기", ["웹툰 (Webtoon)", "일본 애니 (Anime)", "지브리 (Ghibli)", "유화 (Oil Painting)"])
-            style_prompt = "2D, illustration, anime style, flat color, digital art"
-            
-        elif "19+" in art_category:
-            is_nsfw_mode = True
-            st.warning("🔞 19금 모드: 안전 필터 해제 & 수위 높은 묘사 허용")
-            style_detail = st.selectbox("19+ 스타일", ["실사 야동 스타일 (AV Style, Real)", "성인 웹툰 (Hentai, 2D)"])
-            
-            if "Real" in style_detail:
-                style_prompt = "nsfw, sexy, nude, erotic, raw photo, realistic skin texture, 8k uhd"
-            else:
-                style_prompt = "nsfw, hentai, ecchi, anime style, explicit"
+            base_style = "2D, illustration, anime style, flat color, digital art"
+            # 2D + 19금일 때 추가될 프롬프트
+            nsfw_keywords = "nsfw, hentai, ecchi, anime style, explicit" if is_nsfw else ""
 
-    # [B] 캐릭터 외모 (10대 옵션 복구 완료!)
+        if is_nsfw:
+            st.warning("🔥 수위 제한이 해제되었습니다.")
+
+    # [B] 캐릭터 외모
     with st.expander("👤 캐릭터 외모 설정 (열기)", expanded=True):
         gender = st.radio("성별/나이", 
             [
-                "10대 소녀 (Teenage Girl)", 
-                "10대 소년 (Teenage Boy)", 
-                "20대 여성 (20yo Woman)", 
-                "20대 남성 (20yo Man)", 
+                "10대 소녀 (Teenage Girl)", "10대 소년 (Teenage Boy)", 
+                "20대 여성 (20yo Woman)", "20대 남성 (20yo Man)", 
                 "30대 여성 (30yo Woman)"
             ], 
             horizontal=True
@@ -140,7 +142,6 @@ with col_left:
         body_type = st.select_slider("체형", options=["마름", "보통", "글래머/근육질"], value="보통")
         eng_body = {"마름": "slim", "보통": "fit", "글래머/근육질": "curvy, voluptuous, muscular"}[body_type]
         
-        # [NEW] 외모 직접 입력
         custom_face = st.text_input("✨ 외모 직접 입력 (선택사항)", placeholder="예: Blue eyes, flushing face, sweaty skin")
 
 with col_right:
@@ -165,7 +166,9 @@ with col_right:
     with st.expander("👗 의상 (Fashion) - 열기", expanded=True):
         outfit_options = [
             "캐주얼 (Casual clothes)", "오피스룩 (Office wear)", "파티 드레스 (Evening dress)",
-            "비키니 (Bikini)", "란제리 (Lingerie)", "교복 (School uniform)", "✨ 직접 입력 (Custom)"
+            "비키니 (Bikini)", "란제리 (Lingerie)", "교복 (School uniform)", 
+            "알몸/나체 (Nude, Naked) - 19금 전용",
+            "✨ 직접 입력 (Custom)"
         ]
         selected_outfit = st.selectbox("의상 선택", outfit_options)
         
@@ -196,15 +199,17 @@ if generate_btn:
     eng_gender = extract_eng(gender)
     eng_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
     
-    # 19금 모드일 때 부정 프롬프트 조정
-    if is_nsfw_mode:
+    # 19금 모드에 따른 부정 프롬프트 설정
+    if is_nsfw:
+        # 필터 해제: nsfw 관련 단어를 부정 목록에서 뺌
         base_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
     else:
+        # 필터 적용: nsfw 강력 차단
         base_negative = "nsfw, nude, naked, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
 
     # 최종 프롬프트 합체
     full_prompt = (
-        f"Best quality, masterpiece, {style_prompt}. "
+        f"Best quality, masterpiece, {base_style}, {nsfw_keywords}. " # 스타일 + NSFW 키워드 결합
         f"{eng_gender}, {eng_hair}, {eng_body} body. "
         f"{custom_face}. "
         f"{final_pose}, "
@@ -216,8 +221,8 @@ if generate_btn:
     try:
         with st.spinner("AI가 생성 중입니다... 🎨"):
             
-            # 모델: RealVisXL V4.0 Lightning
-            model_id = "adirik/realvisxl-v4.0-lightning:2ef27001faad83347bf7a4186c7a39bb162380c5d7fd1d0bf29fe08410229559"
+            # 모델: RealVisXL V3.0 Turbo (안전 필터 해제 명령을 잘 따르는 모델)
+            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
             
             input_data = {
                 "prompt": full_prompt,
@@ -226,9 +231,9 @@ if generate_btn:
                 "height": 1152,
                 "seed": st.session_state.seed_value,
                 "scheduler": "DPM++_SDE_Karras",
-                "guidance_scale": 2.0,
-                "num_inference_steps": 6,
-                "disable_safety_checker": is_nsfw_mode
+                "guidance_scale": 7.0, 
+                "num_inference_steps": 25,
+                "disable_safety_checker": is_nsfw # 체크박스 상태에 따라 필터 ON/OFF
             }
 
             if uploaded_file:
@@ -250,7 +255,7 @@ if generate_btn:
                 if image_data:
                     st.balloons()
                     st.image(image_data, use_container_width=True)
-                    st.success(f"완성! (Mode: {art_category})")
+                    st.success(f"완성! (19금 모드: {'ON' if is_nsfw else 'OFF'})")
                     
                     st.download_button(
                         label="⬇️ 이미지 저장",

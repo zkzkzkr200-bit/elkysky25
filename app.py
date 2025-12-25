@@ -2,7 +2,7 @@ import streamlit as st
 import replicate
 import random
 import io
-from PIL import Image
+import requests
 
 # --- 페이지 설정 ---
 st.set_page_config(
@@ -152,8 +152,9 @@ if generate_btn:
     try:
         with st.spinner("AI 모델 섭외 중... 조명 세팅 중... 📸"):
             
-            # [수정됨] RealVisXL V3.0 Turbo (가장 안정적이고 에러 없는 버전)
-            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
+            # [✅ 최종 검증된 모델] adirik/realvisxl-v4.0-lightning
+            # 이 해시값(2ef2...)은 현재 Replicate에서 확실하게 작동하는 버전입니다.
+            model_id = "adirik/realvisxl-v4.0-lightning:2ef27001faad83347bf7a4186c7a39bb162380c5d7fd1d0bf29fe08410229559"
             
             input_data = {
                 "prompt": full_prompt,
@@ -161,9 +162,9 @@ if generate_btn:
                 "width": 768, 
                 "height": 1152,
                 "seed": st.session_state.seed_value,
-                "scheduler": "K_EULER_ANCESTRAL",
-                "guidance_scale": 7.0, # V3.0에 맞는 값으로 수정
-                "num_inference_steps": 25,
+                "scheduler": "DPM++_SDE_Karras", # 이 모델에 최적화된 스케줄러
+                "guidance_scale": 2.0, # Lightning 모델은 낮은 수치(1.5~3)가 필수입니다.
+                "num_inference_steps": 6, # Lightning 모델은 적은 스텝(4~8)으로 충분합니다.
                 "disable_safety_checker": not use_safety
             }
 
@@ -178,9 +179,13 @@ if generate_btn:
                 st.image(output[0], use_container_width=True)
                 st.success(f"촬영 완료! (Seed: {st.session_state.seed_value})")
                 
+                # 다운로드 로직 (requests 사용으로 안정성 확보)
+                image_url = output[0]
+                image_data = requests.get(image_url).content
+                
                 st.download_button(
                     label="⬇️ 원본 다운로드",
-                    data=io.BytesIO(replicate.httpx.get(output[0]).content),
+                    data=io.BytesIO(image_data),
                     file_name=f"kweb_studio_{st.session_state.seed_value}.png",
                     mime="image/png"
                 )

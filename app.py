@@ -31,7 +31,6 @@ st.markdown("""
     div[data-baseweb="input"] {
         border-color: #FF4B4B !important;
     }
-    /* 체크박스 강조 */
     label[data-baseweb="checkbox"] {
         font-weight: bold;
         color: #FF4B4B;
@@ -55,7 +54,6 @@ if 'seed_value' not in st.session_state:
 with st.sidebar:
     st.title("⚙️ 스튜디오 설정")
     
-    # API 키 상태 표시
     if "REPLICATE_API_TOKEN" in st.secrets:
         st.success("API 연결됨 (Replicate) ✅")
     else:
@@ -64,8 +62,6 @@ with st.sidebar:
         
     st.divider()
     
-    # 시드 제어
-    st.subheader("🎲 캐릭터 고정 (Seed)")
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.button("New"):
@@ -73,199 +69,16 @@ with st.sidebar:
             st.rerun()
     with col2:
         st.number_input("Seed 번호", value=st.session_state.seed_value, disabled=True)
-    st.caption("이 번호를 기억하면 같은 캐릭터를 다시 부를 수 있습니다.")
+    
+    st.caption("고유 번호가 같으면 같은 캐릭터가 나옵니다.")
 
 # ===========================
 # 2. 메인 화면
 # ===========================
 st.title("🔥 K-Web Pro Ultimate")
-st.caption("원하는 스타일을 선택하고, 수위를 조절하세요.")
+st.caption("RealVisXL V4.0 (High Quality)")
 
 col_left, col_right = st.columns([1, 1])
 
 # 변수 초기화
-style_prompt = ""
-final_pose = ""
-final_outfit = ""
-custom_face = ""
-eng_body = ""
-
-with col_left:
-    st.subheader("1️⃣ 스타일 & 캐릭터")
-    
-    # [A] 화풍 및 19금 설정 (업데이트됨!)
-    with st.container(border=True):
-        st.markdown("#### 🎨 화풍 (Art Style)")
-        
-        # 1. 기본 장르 선택
-        art_category = st.radio("장르 선택", 
-            ["📸 실사 (Photorealistic)", "🖌️ 2D/일러스트 (Anime)"], 
-            horizontal=True
-        )
-        
-        # 2. 19금 모드 체크박스 (중복 선택 가능)
-        is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
-        
-        # 스타일 상세 설정
-        if "실사" in art_category:
-            style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
-            base_style = "photorealistic, realistic, 8k uhd, raw photo, dslr"
-            # 실사 + 19금일 때 추가될 프롬프트
-            nsfw_keywords = "nsfw, sexy, nude, erotic, raw photo, realistic skin texture" if is_nsfw else ""
-            
-        else: # 2D
-            style_detail = st.selectbox("분위기", ["웹툰 (Webtoon)", "일본 애니 (Anime)", "지브리 (Ghibli)", "유화 (Oil Painting)"])
-            base_style = "2D, illustration, anime style, flat color, digital art"
-            # 2D + 19금일 때 추가될 프롬프트
-            nsfw_keywords = "nsfw, hentai, ecchi, anime style, explicit" if is_nsfw else ""
-
-        if is_nsfw:
-            st.warning("🔥 수위 제한이 해제되었습니다.")
-
-    # [B] 캐릭터 외모
-    with st.expander("👤 캐릭터 외모 설정 (열기)", expanded=True):
-        gender = st.radio("성별/나이", 
-            [
-                "10대 소녀 (Teenage Girl)", "10대 소년 (Teenage Boy)", 
-                "20대 여성 (20yo Woman)", "20대 남성 (20yo Man)", 
-                "30대 여성 (30yo Woman)"
-            ], 
-            horizontal=True
-        )
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            hair_style = st.selectbox("머리 모양", ["긴 생머리 (Long straight)", "웨이브 (Wavy)", "단발 (Bob cut)", "포니테일 (Ponytail)", "똥머리 (Bun)"])
-        with c2:
-            hair_color = st.selectbox("머리색", ["갈색 (Brown)", "검정 (Black)", "금발 (Blonde)", "은발 (Silver)", "빨강 (Red)"])
-        
-        body_type = st.select_slider("체형", options=["마름", "보통", "글래머/근육질"], value="보통")
-        eng_body = {"마름": "slim", "보통": "fit", "글래머/근육질": "curvy, voluptuous, muscular"}[body_type]
-        
-        custom_face = st.text_input("✨ 외모 직접 입력 (선택사항)", placeholder="예: Blue eyes, flushing face, sweaty skin")
-
-with col_right:
-    st.subheader("2️⃣ 포즈 & 패션")
-    
-    # [C] 자세 설정
-    with st.container(border=True):
-        st.markdown("#### 🧘 자세 (Pose)")
-        pose_options = [
-            "서 있는 (Standing)", "앉아 있는 (Sitting)", "누워 있는 (Lying down)",
-            "무릎 꿇은 (Kneeling)", "네발 기기 (All fours)", "뒤태 (Back view)",
-            "다리 꼬기 (Crossed legs)", "셀카 찍는 (Taking a selfie)", "✨ 직접 입력 (Custom)"
-        ]
-        selected_pose = st.selectbox("자세 선택", pose_options)
-        
-        if "직접 입력" in selected_pose:
-            final_pose = st.text_input("원하는 자세 영어로 입력", placeholder="예: Spreading legs, squatting")
-        else:
-            final_pose = extract_eng(selected_pose)
-
-    # [D] 의상 설정
-    with st.expander("👗 의상 (Fashion) - 열기", expanded=True):
-        outfit_options = [
-            "캐주얼 (Casual clothes)", "오피스룩 (Office wear)", "파티 드레스 (Evening dress)",
-            "비키니 (Bikini)", "란제리 (Lingerie)", "교복 (School uniform)", 
-            "알몸/나체 (Nude, Naked) - 19금 전용",
-            "✨ 직접 입력 (Custom)"
-        ]
-        selected_outfit = st.selectbox("의상 선택", outfit_options)
-        
-        if "직접 입력" in selected_outfit:
-            custom_outfit = st.text_input("의상 영어로 입력", placeholder="예: See-through shirt, micro skirt")
-            final_outfit = custom_outfit if custom_outfit else "Casual clothes"
-        else:
-            final_outfit = extract_eng(selected_outfit)
-
-    # [E] 배경 및 업로드
-    background_text = st.text_area("배경 묘사", placeholder="예: 침실, 호텔, 해변, 비 내리는 거리", height=80)
-    
-    with st.expander("📸 사진 변형 (Img2Img)", expanded=False):
-        uploaded_file = st.file_uploader("참조 이미지", type=["jpg", "png", "jpeg"])
-        strength_val = 0.65
-        if uploaded_file:
-            st.image(uploaded_file, width=200)
-            strength_val = st.slider("변경 강도", 0.1, 1.0, 0.65)
-
-    st.divider()
-    generate_btn = st.button("✨ 이미지 생성 (Generate)")
-
-# ===========================
-# 3. 로직: 프롬프트 조립
-# ===========================
-if generate_btn:
-    # 영어 추출
-    eng_gender = extract_eng(gender)
-    eng_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
-    
-    # 19금 모드에 따른 부정 프롬프트 설정
-    if is_nsfw:
-        # 필터 해제: nsfw 관련 단어를 부정 목록에서 뺌
-        base_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
-    else:
-        # 필터 적용: nsfw 강력 차단
-        base_negative = "nsfw, nude, naked, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
-
-    # 최종 프롬프트 합체
-    full_prompt = (
-        f"Best quality, masterpiece, {base_style}, {nsfw_keywords}. " # 스타일 + NSFW 키워드 결합
-        f"{eng_gender}, {eng_hair}, {eng_body} body. "
-        f"{custom_face}. "
-        f"{final_pose}, "
-        f"wearing {final_outfit}. "
-        f"Background is {background_text}."
-    )
-    
-    # API 호출
-    try:
-        with st.spinner("AI가 생성 중입니다... 🎨"):
-            
-            # 모델: RealVisXL V3.0 Turbo (안전 필터 해제 명령을 잘 따르는 모델)
-            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
-            
-            input_data = {
-                "prompt": full_prompt,
-                "negative_prompt": base_negative,
-                "width": 768, 
-                "height": 1152,
-                "seed": st.session_state.seed_value,
-                "scheduler": "DPM++_SDE_Karras",
-                "guidance_scale": 7.0, 
-                "num_inference_steps": 25,
-                "disable_safety_checker": is_nsfw # 체크박스 상태에 따라 필터 ON/OFF
-            }
-
-            if uploaded_file:
-                input_data["image"] = uploaded_file
-                input_data["prompt_strength"] = strength_val
-
-            output = replicate.run(model_id, input=input_data)
-            
-            # 결과 처리
-            image_data = None
-            if output:
-                result_item = output[0] if isinstance(output, list) else output
-
-                if hasattr(result_item, "read"):
-                    image_data = result_item.read()
-                elif isinstance(result_item, str) and result_item.startswith("http"):
-                    image_data = requests.get(result_item).content
-                
-                if image_data:
-                    st.balloons()
-                    st.image(image_data, use_container_width=True)
-                    st.success(f"완성! (19금 모드: {'ON' if is_nsfw else 'OFF'})")
-                    
-                    st.download_button(
-                        label="⬇️ 이미지 저장",
-                        data=io.BytesIO(image_data),
-                        file_name=f"kweb_{st.session_state.seed_value}.png",
-                        mime="image/png"
-                    )
-                    
-                    with st.expander("🔍 프롬프트 확인"):
-                        st.code(full_prompt)
-
-    except Exception as e:
-        st.error(f"에러 발생: {e}")
+style

@@ -121,4 +121,76 @@ with col_right:
     st.markdown("#### 📸 사진 변형 (선택사항)")
     uploaded_file = st.file_uploader("참조 이미지를 올리면 변형합니다.", type=["jpg", "png", "jpeg"])
     strength_val = 0.65
-    if uploaded
+    if uploaded_file:
+        st.image(uploaded_file, width=200)
+        strength_val = st.slider("변경 강도", 0.1, 1.0, 0.65)
+
+    st.divider()
+    
+    # [F] 최종 생성 버튼
+    generate_btn = st.button("✨ 스튜디오 촬영 시작 (Generate)")
+
+# ===========================
+# 3. 로직: 프롬프트 조립기
+# ===========================
+if generate_btn:
+    # 1. 한국어 선택지 -> 영어 프롬프트 변환 (핵심 로직)
+    # 괄호 안의 영어만 추출하는 함수
+    def extract_eng(text):
+        if "(" in text and ")" in text:
+            return text.split("(")[1].split(")")[0]
+        return text
+
+    p_gender = extract_eng(gender)
+    p_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
+    p_body = extract_eng(body_type)
+    p_fashion = f"{extract_eng(fashion_style)}, {clothes_detail}"
+    p_camera = f"{extract_eng(view_angle)}, {extract_eng(lighting)} lighting"
+    
+    # 최종 프롬프트 합체
+    full_prompt = f"Best quality, masterpiece, photorealistic, 8k uhd, raw photo. {p_gender}, {p_hair}, {p_body} body. wearing {p_fashion}. {p_camera}. Background is {background_text}."
+    
+    # 2. API 호출
+    try:
+        with st.spinner("AI 모델 섭외 중... 조명 세팅 중... 📸"):
+            
+            # RealVisXL V4.0 Lightning 모델 사용
+            model_id = "lucataco/realvisxl-v4.0-lightning:7d04e4c25143093238964724451662c53a819c4d922097e887e07675f91753c1"
+            
+            input_data = {
+                "prompt": full_prompt,
+                "negative_prompt": "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
+                "width": 896, # 9:16 비율에 가까운 고화질
+                "height": 1152,
+                "seed": st.session_state.seed_value,
+                "scheduler": "K_EULER_ANCESTRAL",
+                "guidance_scale": 3.0,
+                "num_inference_steps": 20,
+                "disable_safety_checker": not use_safety # 사용자가 끄면 해제
+            }
+
+            # [수정된 부분] 여기에 콜론(:)을 넣고 변수명을 맞췄습니다!
+            if uploaded_file:
+                input_data["image"] = uploaded_file
+                input_data["prompt_strength"] = strength_val
+
+            output = replicate.run(model_id, input=input_data)
+            
+            if output:
+                st.balloons() # 성공 축하 효과
+                st.image(output[0], use_container_width=True)
+                st.success(f"촬영 완료! (Seed: {st.session_state.seed_value})")
+                
+                # 다운로드 버튼
+                st.download_button(
+                    label="⬇️ 원본 다운로드",
+                    data=io.BytesIO(replicate.httpx.get(output[0]).content),
+                    file_name=f"kweb_studio_{st.session_state.seed_value}.png",
+                    mime="image/png"
+                )
+                
+                with st.expander("🔍 AI가 받은 실제 주문서(Prompt) 보기"):
+                    st.code(full_prompt)
+
+    except Exception as e:
+        st.error(f"촬영 실패: {e}")

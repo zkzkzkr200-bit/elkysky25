@@ -8,7 +8,7 @@ import time
 # --- 페이지 설정 ---
 st.set_page_config(
     page_title="K-Web Pro Final",
-    page_icon="👑",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -76,22 +76,24 @@ with st.sidebar:
 # ===========================
 # 2. 메인 화면
 # ===========================
-st.title("👑 K-Web Pro Final")
-st.caption("Optimized Turbo Engine (에러 없는 고화질 세팅)")
+st.title("⚡ K-Web Pro Lightning")
+st.caption("RealVisXL V4.0 Lightning (고화질 + 초고속)")
 
 col_left, col_right = st.columns([1, 1])
 
-# [변수 초기화] - 에러 방지
-final_style_keywords = "" 
+# [중요] 변수 미리 초기화 (NameError 완벽 방지)
+# --------------------------------------------------------
+final_style_keywords = "masterpiece, best quality" 
 nsfw_keywords = ""
-final_view_angle = ""
-final_gender = ""
-final_hair = ""
-final_body = ""
-final_pose = ""
-final_outfit = ""
+final_view_angle = "front view"
+final_gender = "20yo woman"
+final_hair = "long hair"
+final_body = "fit body"
+final_pose = "standing"
+final_outfit = "casual clothes"
 custom_face = ""
 is_anime_mode = False 
+# --------------------------------------------------------
 
 with col_left:
     st.subheader("1️⃣ 스타일 & 캐릭터")
@@ -106,13 +108,12 @@ with col_left:
         
         is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
         
-        # 2D/실사 모드에 따른 키워드 최적화
         if "2D" in art_category:
             is_anime_mode = True
             style_detail = st.selectbox("분위기", ["웹툰 스타일 (Webtoon)", "일본 애니메이션 (Anime)", "지브리 스튜디오 (Studio Ghibli)", "유화 (Oil Painting)"])
             eng_detail = extract_eng(style_detail)
 
-            # 2D 스타일 전용 고화질 프롬프트
+            # 2D 스타일 키워드
             if "Webtoon" in eng_detail:
                 final_style_keywords = "masterpiece, best quality, Korean webtoon style, manhwa, sharp lines, vibrant colors, 2D, flat color"
             elif "Anime" in eng_detail:
@@ -130,7 +131,7 @@ with col_left:
         else: # 실사 모드
             is_anime_mode = False
             style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
-            # 실사 전용 고화질 프롬프트 (sharp focus, 4k 등 추가)
+            # 실사 전용 고화질 프롬프트
             final_style_keywords = f"photorealistic, realistic, 8k uhd, raw photo, sharp focus, dslr, high quality, film grain, hyper detailed, {extract_eng(style_detail)}"
             
             if is_nsfw:
@@ -200,6 +201,7 @@ with col_right:
         
         if "직접 입력" in selected_outfit:
             custom_outfit = st.text_input("의상 영어로 입력", placeholder="예: See-through shirt, micro skirt")
+            # [수정] 빈 값일 때 기본값 설정
             final_outfit = custom_outfit if custom_outfit else "Casual clothes"
         else:
             final_outfit = extract_eng(selected_outfit)
@@ -214,21 +216,19 @@ with col_right:
             strength_val = st.slider("변경 강도", 0.1, 1.0, 0.65)
 
     st.divider()
-    generate_btn = st.button("✨ 이미지 생성 (Generate)")
+    generate_btn = st.button("⚡ 고화질 생성 (Generate)")
 
 # ===========================
 # 3. 로직 및 실행
 # ===========================
 if generate_btn:
     
-    # 1. 부정 프롬프트 설정 (스타일 혼합 방지)
+    # 1. 부정 프롬프트 (스타일 혼합 방지)
     common_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, ugly, deformed"
     
     if is_anime_mode:
-        # 2D 모드: 실사 느낌 제거
         base_negative = common_negative + ", photorealistic, realistic, 3d, photograph"
     else:
-        # 실사 모드: 그림 느낌 제거
         base_negative = common_negative + ", painting, drawing, illustration, 2d, anime, cartoon, sketch"
 
     if not is_nsfw:
@@ -245,26 +245,25 @@ if generate_btn:
     )
     
     try:
-        with st.spinner("🚀 최적화된 엔진으로 생성 중... (약 10초)"):
+        with st.spinner("⚡ 초고속 렌더링 중... (약 3~5초)"):
             
-            # [최종 엔진 복구] lucataco/realvisxl-v3.0-turbo
-            # 이 모델은 유일하게 422 에러 없이 작동했던 모델입니다.
-            # Hash: f5d2... (이전에 작동 성공한 버전)
-            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
+            # [최종 엔진 교체] RealVisXL V4.0 Lightning
+            # 특징: V3.0보다 선명하고, Standard보다 빠릅니다. (최고의 밸런스)
+            # Hash ID: 7d6a... (현재 가장 안정적인 버전)
+            model_id = "lucataco/realvisxl-v4.0-lightning:7d6a781a8b0373d573663f735d475654378d3807b5e8555949d0124354c4146e"
             
             input_data = {
                 "prompt": full_prompt,
                 "negative_prompt": base_negative,
-                "width": 1024, # 화질 향상을 위해 해상도 증가
-                "height": 1024,
+                "width": 832, 
+                "height": 1216,
                 "seed": st.session_state.seed_value,
                 "scheduler": "DPM++_SDE_Karras",
                 
-                # [화질 최적화 핵심] 
-                # Turbo 모델은 Guidance가 낮아야 선명하고, Steps가 적어야 깨지지 않습니다.
-                "guidance_scale": 2.5,  # 7.0 (X) -> 2.5 (O) : 흐릿함 해결
-                "num_inference_steps": 10, # 25 (X) -> 10 (O) : 뭉개짐 해결
-                
+                # [Lightning 모델 전용 최적 세팅]
+                # 스텝은 낮게, 가이던스도 낮게 해야 화질이 깨지지 않고 선명합니다.
+                "guidance_scale": 2.0, 
+                "num_inference_steps": 6, 
                 "disable_safety_checker": is_nsfw
             }
 
@@ -301,10 +300,10 @@ if generate_btn:
     except replicate.exceptions.ReplicateError as e:
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
-             st.warning("서버가 붐빕니다. 10초만 쉬었다가 다시 눌러주세요!")
+             st.warning("이용량이 많아 서버가 잠시 멈췄습니다. 10초 뒤에 다시 시도해주세요!")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
-             st.warning("프롬프트 수위를 조금만 낮춰주세요.")
+             st.warning("너무 높은 수위는 차단되었습니다. 프롬프트를 조금 수정해주세요.")
         else:
              st.error(f"API 에러: {e}")
     except Exception as e:

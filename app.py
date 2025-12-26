@@ -7,8 +7,8 @@ import time
 
 # --- 페이지 설정 ---
 st.set_page_config(
-    page_title="K-Web Pro HQ",
-    page_icon="💎",
+    page_title="K-Web Pro Final",
+    page_icon="👑",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -76,12 +76,12 @@ with st.sidebar:
 # ===========================
 # 2. 메인 화면
 # ===========================
-st.title("💎 K-Web Pro HQ")
-st.caption("Dual Engine System (실사/2D 전문 모델 자동 전환)")
+st.title("👑 K-Web Pro Final")
+st.caption("Optimized Turbo Engine (에러 없는 고화질 세팅)")
 
 col_left, col_right = st.columns([1, 1])
 
-# [변수 초기화]
+# [변수 초기화] - 에러 방지
 final_style_keywords = "" 
 nsfw_keywords = ""
 final_view_angle = ""
@@ -91,7 +91,6 @@ final_body = ""
 final_pose = ""
 final_outfit = ""
 custom_face = ""
-# 2D/실사 구분용 플래그
 is_anime_mode = False 
 
 with col_left:
@@ -107,21 +106,21 @@ with col_left:
         
         is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
         
+        # 2D/실사 모드에 따른 키워드 최적화
         if "2D" in art_category:
-            is_anime_mode = True # 2D 모드 활성화
-            
+            is_anime_mode = True
             style_detail = st.selectbox("분위기", ["웹툰 스타일 (Webtoon)", "일본 애니메이션 (Anime)", "지브리 스튜디오 (Studio Ghibli)", "유화 (Oil Painting)"])
             eng_detail = extract_eng(style_detail)
 
-            # [2D 전용 프롬프트 강화]
+            # 2D 스타일 전용 고화질 프롬프트
             if "Webtoon" in eng_detail:
-                final_style_keywords = "masterpiece, best quality, Korean webtoon style, manhwa, sharp lines, vibrant colors, digital art"
+                final_style_keywords = "masterpiece, best quality, Korean webtoon style, manhwa, sharp lines, vibrant colors, 2D, flat color"
             elif "Anime" in eng_detail:
-                 final_style_keywords = "masterpiece, best quality, Japanese anime style, anime screencap, cel shading, high quality animation"
+                 final_style_keywords = "masterpiece, best quality, Japanese anime style, anime screencap, cel shading, high quality animation, 2D"
             elif "Ghibli" in eng_detail:
-                 final_style_keywords = "masterpiece, best quality, Studio Ghibli style, Hayao Miyazaki, watercolor style, scenic, soft lighting, fantasy"
+                 final_style_keywords = "masterpiece, best quality, Studio Ghibli style, Hayao Miyazaki, watercolor texture, soft lighting, fantasy world, 2D"
             elif "Oil Painting" in eng_detail:
-                 final_style_keywords = "masterpiece, best quality, oil painting, textured, traditional medium, impasto"
+                 final_style_keywords = "masterpiece, best quality, oil painting, textured, traditional medium, impasto, artistic"
 
             if is_nsfw:
                 nsfw_keywords = "nsfw, hentai, ecchi, explicit, uncensored"
@@ -130,9 +129,9 @@ with col_left:
                 
         else: # 실사 모드
             is_anime_mode = False
-            
             style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
-            final_style_keywords = f"photorealistic, realistic, 8k uhd, raw photo, sharp focus, dslr, high quality, film grain, {extract_eng(style_detail)}"
+            # 실사 전용 고화질 프롬프트 (sharp focus, 4k 등 추가)
+            final_style_keywords = f"photorealistic, realistic, 8k uhd, raw photo, sharp focus, dslr, high quality, film grain, hyper detailed, {extract_eng(style_detail)}"
             
             if is_nsfw:
                 nsfw_keywords = "nsfw, sexy, nude, erotic, raw photo, realistic skin texture, detailed skin"
@@ -215,21 +214,21 @@ with col_right:
             strength_val = st.slider("변경 강도", 0.1, 1.0, 0.65)
 
     st.divider()
-    generate_btn = st.button("💎 초고화질 이미지 생성 (Generate HQ)")
+    generate_btn = st.button("✨ 이미지 생성 (Generate)")
 
 # ===========================
 # 3. 로직 및 실행
 # ===========================
 if generate_btn:
     
-    # 1. 부정 프롬프트 설정 (실사 vs 2D에 따라 다르게)
+    # 1. 부정 프롬프트 설정 (스타일 혼합 방지)
     common_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, ugly, deformed"
     
     if is_anime_mode:
-        # 2D일 때는 '실사 느낌'을 부정 프롬프트에 추가해서 그림처럼 나오게 유도
+        # 2D 모드: 실사 느낌 제거
         base_negative = common_negative + ", photorealistic, realistic, 3d, photograph"
     else:
-        # 실사일 때는 '그림 느낌'을 부정 프롬프트에 추가
+        # 실사 모드: 그림 느낌 제거
         base_negative = common_negative + ", painting, drawing, illustration, 2d, anime, cartoon, sketch"
 
     if not is_nsfw:
@@ -246,30 +245,27 @@ if generate_btn:
     )
     
     try:
-        # [듀얼 엔진 시스템]
-        # 사용자의 선택에 따라 완전히 다른 전문가 모델을 호출합니다.
-        
-        if is_anime_mode:
-            # [2D 전문] Animagine XL 3.1 (애니메이션 최강 모델)
-            model_id = "cagliostrolab/animagine-xl-3.1:a1075677d54b85da26b0d911bb26484a0c201a09d6e4b986c7501b44473e6542"
-            status_text = "🎨 2D/애니메이션 전문 엔진 가동 중..."
-        else:
-            # [실사 전문] RealVisXL V4.0 (실사 최강 모델)
-            model_id = "konieshadow/realvisxl-v4.0:4f2913076880017127c59c5d070e309255a025687352f2052445e4125a25034c"
-            status_text = "📸 실사 전문 엔진 가동 중..."
-
-        with st.spinner(f"{status_text} (약 15~20초)"):
+        with st.spinner("🚀 최적화된 엔진으로 생성 중... (약 10초)"):
+            
+            # [최종 엔진 복구] lucataco/realvisxl-v3.0-turbo
+            # 이 모델은 유일하게 422 에러 없이 작동했던 모델입니다.
+            # Hash: f5d2... (이전에 작동 성공한 버전)
+            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
             
             input_data = {
                 "prompt": full_prompt,
                 "negative_prompt": base_negative,
-                "width": 832, # Animagine 등 최신 모델에 최적화된 비율
-                "height": 1216,
+                "width": 1024, # 화질 향상을 위해 해상도 증가
+                "height": 1024,
                 "seed": st.session_state.seed_value,
-                "scheduler": "K_EULER_ANCESTRAL", 
-                "guidance_scale": 7.0, 
-                "num_inference_steps": 30,
-                # "disable_safety_checker": is_nsfw # 일부 모델은 이 옵션이 없어도 됨 (자동처리)
+                "scheduler": "DPM++_SDE_Karras",
+                
+                # [화질 최적화 핵심] 
+                # Turbo 모델은 Guidance가 낮아야 선명하고, Steps가 적어야 깨지지 않습니다.
+                "guidance_scale": 2.5,  # 7.0 (X) -> 2.5 (O) : 흐릿함 해결
+                "num_inference_steps": 10, # 25 (X) -> 10 (O) : 뭉개짐 해결
+                
+                "disable_safety_checker": is_nsfw
             }
 
             if uploaded_file:
@@ -278,7 +274,6 @@ if generate_btn:
 
             output = replicate.run(model_id, input=input_data)
             
-            # 결과 처리
             image_data = None
             if output:
                 result_item = output[0] if isinstance(output, list) else output
@@ -291,12 +286,12 @@ if generate_btn:
                 if image_data:
                     st.balloons()
                     st.image(image_data, use_container_width=True)
-                    st.success(f"완성! (Mode: {'2D/Anime' if is_anime_mode else 'Realism'})")
+                    st.success(f"생성 완료! (NSFW: {'ON' if is_nsfw else 'OFF'})")
                     
                     st.download_button(
-                        label="⬇️ 고화질 이미지 저장",
+                        label="⬇️ 이미지 저장",
                         data=io.BytesIO(image_data),
-                        file_name=f"kweb_hq_{st.session_state.seed_value}.png",
+                        file_name=f"kweb_img_{st.session_state.seed_value}.png",
                         mime="image/png"
                     )
                     
@@ -306,7 +301,7 @@ if generate_btn:
     except replicate.exceptions.ReplicateError as e:
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
-             st.warning("서버가 붐빕니다. 20초만 쉬었다가 다시 눌러주세요!")
+             st.warning("서버가 붐빕니다. 10초만 쉬었다가 다시 눌러주세요!")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
              st.warning("프롬프트 수위를 조금만 낮춰주세요.")

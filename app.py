@@ -77,21 +77,20 @@ with st.sidebar:
 # 2. 메인 화면
 # ===========================
 st.title("🔥 K-Web Pro Ultimate")
-st.caption("RealVisXL V3.0 Turbo (Uncensored Support)")
+st.caption("RealVisXL V3.0 Turbo (Stable Version)")
 
 col_left, col_right = st.columns([1, 1])
 
 # [중요] 변수 미리 초기화 (NameError 방지)
-# ------------------------------------------------
-final_style_keywords = "" # 화풍 키워드
-nsfw_keywords = ""        # 19금 키워드
-final_gender = ""         # 성별
-final_hair = ""           # 헤어
-final_body = ""           # 체형
-final_pose = ""           # 자세
-final_outfit = ""         # 의상
-custom_face = ""          # 얼굴 특징
-# ------------------------------------------------
+# 어떤 옵션을 선택하든 에러가 나지 않도록 빈 값을 미리 채워둡니다.
+final_style_keywords = "photorealistic, 8k uhd" 
+nsfw_keywords = ""
+final_gender = ""
+final_hair = ""
+final_body = ""
+final_pose = ""
+final_outfit = ""
+custom_face = ""
 
 with col_left:
     st.subheader("1️⃣ 스타일 & 캐릭터")
@@ -182,6 +181,7 @@ with col_right:
         
         if "직접 입력" in selected_outfit:
             custom_outfit = st.text_input("의상 영어로 입력", placeholder="예: See-through shirt, micro skirt")
+            # 값이 비어있을 경우를 대비한 기본값
             final_outfit = custom_outfit if custom_outfit else "Casual clothes"
         else:
             final_outfit = extract_eng(selected_outfit)
@@ -203,7 +203,7 @@ with col_right:
 # ===========================
 if generate_btn:
     
-    # 1. 부정 프롬프트 설정 (19금 여부에 따라)
+    # 1. 부정 프롬프트 설정
     if is_nsfw:
         # 필터 해제: nsfw 단어 허용
         base_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
@@ -211,7 +211,7 @@ if generate_btn:
         # 필터 적용: nsfw 단어 강력 차단
         base_negative = "nsfw, nude, naked, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
 
-    # 2. 최종 프롬프트 조립 (오류가 없도록 변수명 통일)
+    # 2. 최종 프롬프트 조립
     full_prompt = (
         f"Best quality, masterpiece, {final_style_keywords}, {nsfw_keywords}. "
         f"{final_gender}, {final_hair}, {final_body} body. "
@@ -224,9 +224,8 @@ if generate_btn:
     try:
         with st.spinner("AI가 렌더링 중입니다... (약 10초) 🎨"):
             
-            # [최종 엔진] RealVisXL V3.0 Turbo
-            # 가장 안정적이며 disable_safety_checker 명령을 잘 따름
-            # Hash ID: f5d2... (Replicate 공식 최신 버전)
+            # [복구됨] RealVisXL V3.0 Turbo (공식 Hash ID)
+            # 이 버전은 확실하게 존재하며, 검열 해제도 잘 됩니다.
             model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
             
             input_data = {
@@ -247,7 +246,7 @@ if generate_btn:
 
             output = replicate.run(model_id, input=input_data)
             
-            # 결과물 처리 (주소 or 파일)
+            # 결과물 처리
             image_data = None
             if output:
                 result_item = output[0] if isinstance(output, list) else output
@@ -276,11 +275,11 @@ if generate_btn:
         # 에러 메시지 분석
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
-             st.warning("사용자가 많거나 충전 잔액이 부족하여 일시 정지되었습니다. 10초만 기다렸다가 다시 누르세요!")
+             st.warning("사용자가 많아 잠시 정지되었습니다. 10초만 기다렸다가 다시 누르세요!")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
              st.warning("모델이 너무 야하다고 판단했습니다. 프롬프트 수위를 조금만 낮춰주세요.")
         else:
              st.error(f"API 에러: {e}")
     except Exception as e:
-        st.error(f"시스템 에러 (코드 문제): {e}")
+        st.error(f"시스템 에러: {e}")

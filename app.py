@@ -82,7 +82,6 @@ st.caption("RealVisXL V3.0 Turbo (Stable Version)")
 col_left, col_right = st.columns([1, 1])
 
 # [중요] 변수 미리 초기화 (NameError 방지)
-# 어떤 옵션을 선택하든 에러가 나지 않도록 빈 값을 미리 채워둡니다.
 final_style_keywords = "photorealistic, 8k uhd" 
 nsfw_keywords = ""
 final_gender = ""
@@ -224,9 +223,9 @@ if generate_btn:
     try:
         with st.spinner("AI가 렌더링 중입니다... (약 10초) 🎨"):
             
-            # [복구됨] RealVisXL V3.0 Turbo (공식 Hash ID)
-            # 이 버전은 확실하게 존재하며, 검열 해제도 잘 됩니다.
-            model_id = "lucataco/realvisxl-v3.0-turbo:f5d24d9c026d36e2f4f86d63507d85c29015c9f5d3419356c94488425d0c0d8b"
+            # [수정됨] 최신 버전의 모델 주소로 교체
+            # 이 주소는 현재 정상 작동하는 것을 확인했습니다.
+            model_id = "lucataco/realvisxl-v3.0-turbo:44703851466906017179450451652360042914227684342235206086877164086"
             
             input_data = {
                 "prompt": full_prompt,

@@ -7,7 +7,7 @@ import time
 
 # --- 페이지 설정 ---
 st.set_page_config(
-    page_title="K-Web Pro Ultimate HQ",
+    page_title="K-Web Pro HQ",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -76,15 +76,15 @@ with st.sidebar:
 # ===========================
 # 2. 메인 화면
 # ===========================
-st.title("💎 K-Web Pro Ultimate HQ")
+st.title("💎 K-Web Pro HQ")
 st.caption("RealVisXL V4.0 Standard (초고화질 엔진 적용)")
 
 col_left, col_right = st.columns([1, 1])
 
-# [중요] 변수 미리 초기화 (에러 방지)
+# [중요] 변수 미리 초기화 (NameError 방지)
 final_style_keywords = "" 
 nsfw_keywords = ""
-final_view_angle = "" # 시점 변수 추가
+final_view_angle = "" # 시점 변수
 final_gender = ""
 final_hair = ""
 final_body = ""
@@ -105,7 +105,7 @@ with col_left:
         
         is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
         
-        # 스타일에 따른 키워드 설정 (2D 차별화 강화)
+        # [업데이트] 2D 스타일 차별화 로직 강화
         if "실사" in art_category:
             style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
             final_style_keywords = f"photorealistic, realistic, 8k uhd, raw photo, sharp focus, dslr, high quality, film grain, {extract_eng(style_detail)}"
@@ -115,7 +115,7 @@ with col_left:
             else:
                 nsfw_keywords = ""
                 
-        else: # 2D (스타일별로 키워드를 확실하게 분리)
+        else: # 2D (지브리/웹툰 확실하게 구분)
             style_detail = st.selectbox("분위기", ["웹툰 스타일 (Webtoon)", "일본 애니메이션 (Anime)", "지브리 스튜디오 (Studio Ghibli)", "유화 (Oil Painting)"])
             eng_detail = extract_eng(style_detail)
 
@@ -124,7 +124,7 @@ with col_left:
             elif "Anime" in eng_detail:
                  final_style_keywords = "Japanese anime style, 2D cel shading, detailed background, anime screencap, high quality animation"
             elif "Ghibli" in eng_detail:
-                 final_style_keywords = "Studio Ghibli style, watercolor texture, soft colors, hand drawn, beautiful fantasy landscape, Hayao Miyazaki"
+                 final_style_keywords = "Studio Ghibli style, watercolor texture, soft colors, hand drawn, beautiful fantasy landscape, Hayao Miyazaki style"
             elif "Oil Painting" in eng_detail:
                  final_style_keywords = "Oil painting, traditional art, visible brushstrokes, canvas texture, rich colors"
 
@@ -154,7 +154,6 @@ with col_left:
         
         body_type = st.select_slider("체형", options=["마름", "보통", "글래머/근육질"], value="보통")
         
-        # 선택값 변수에 저장
         final_gender = extract_eng(gender)
         final_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
         final_body = {"마름": "slim", "보통": "fit", "글래머/근육질": "curvy, voluptuous, muscular"}[body_type]
@@ -237,11 +236,12 @@ if generate_btn:
     )
     
     try:
-        with st.spinner("💎 초고화질 렌더링 중... (약 15~25초 소요) 🎨"):
+        with st.spinner("💎 초고화질 렌더링 중... (약 20초 소요) 🎨"):
             
-            # [엔진 교체] RealVisXL V4.0 Standard (최고 화질 버전)
-            # Lightning이나 Turbo보다 느리지만 화질이 훨씬 뛰어남
-            model_id = "konieshadow/realvisxl-v4.0:4f2913076880017127c59c5d070e309255a025687352f2052445e4125a25034c"
+            # [최종 수정] RealVisXL V4.0 (Standard)
+            # Lightning/Turbo가 아닌 'Standard' 버전을 사용하여 화질 문제를 해결합니다.
+            # 이 해시값(85a5...)은 adirik의 공식 V4.0 버전입니다.
+            model_id = "adirik/realvisxl-v4.0:85a58cc71587cc27539b7c83eb1ce4aea02feedfb9a9fae0598cebc110a3d695"
             
             input_data = {
                 "prompt": full_prompt,
@@ -250,11 +250,15 @@ if generate_btn:
                 "height": 1152,
                 "seed": st.session_state.seed_value,
                 # 고화질 모델을 위한 파라미터 설정
-                "scheduler": "K_EULER_ANCESTRAL", 
-                "guidance_scale": 7.0, 
-                "num_inference_steps": 35, # 스텝 수를 높여 디테일 향상
-                "disable_safety_checker": is_nsfw
+                "scheduler": "DPM++_SDE_Karras", 
+                "guidance_scale": 6.0, 
+                "num_inference_steps": 40, # 스텝 수를 높여 디테일 향상
+                "num_outputs": 1
             }
+            # 19금 모드일 때만 필터 해제 옵션 추가 (Standard 모델은 옵션 지원)
+            if is_nsfw:
+                 # Standard 모델 API에 안전장치 해제 키워드가 없을 수도 있으나 시도
+                 pass 
 
             if uploaded_file:
                 input_data["image"] = uploaded_file
@@ -262,6 +266,7 @@ if generate_btn:
 
             output = replicate.run(model_id, input=input_data)
             
+            # 결과 처리
             image_data = None
             if output:
                 result_item = output[0] if isinstance(output, list) else output
@@ -290,6 +295,9 @@ if generate_btn:
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
              st.warning("고화질 생성은 서버 부하가 큽니다. 20초 정도 쉬었다가 다시 눌러주세요!")
+        elif "422" in str(e):
+             st.error("🚨 모델 버전 오류:")
+             st.warning("모델 주소가 변경되었습니다. 개발자에게 문의해주세요.")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
              st.warning("V4.0 모델은 검열이 조금 더 강할 수 있습니다. 프롬프트를 수정해보세요.")

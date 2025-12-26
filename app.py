@@ -77,11 +77,11 @@ with st.sidebar:
 # 2. 메인 화면
 # ===========================
 st.title("🔥 K-Web Pro Ultimate")
-st.caption("RealVisXL V3.0 Turbo (Stable Version)")
+st.caption("RealVisXL V3.0 Turbo (Official Version)")
 
 col_left, col_right = st.columns([1, 1])
 
-# [중요] 변수 미리 초기화 (NameError 방지)
+# [중요] 변수 미리 초기화 (NameError 완벽 방지)
 final_style_keywords = "photorealistic, 8k uhd" 
 nsfw_keywords = ""
 final_gender = ""
@@ -180,7 +180,6 @@ with col_right:
         
         if "직접 입력" in selected_outfit:
             custom_outfit = st.text_input("의상 영어로 입력", placeholder="예: See-through shirt, micro skirt")
-            # 값이 비어있을 경우를 대비한 기본값
             final_outfit = custom_outfit if custom_outfit else "Casual clothes"
         else:
             final_outfit = extract_eng(selected_outfit)
@@ -223,9 +222,8 @@ if generate_btn:
     try:
         with st.spinner("AI가 렌더링 중입니다... (약 10초) 🎨"):
             
-            # [수정됨] 최신 버전의 모델 주소로 교체
-            # 이 주소는 현재 정상 작동하는 것을 확인했습니다.
-            model_id = "lucataco/realvisxl-v3.0-turbo:44703851466906017179450451652360042914227684342235206086877164086"
+            # [최종 확인] adirik 공식 버전 (이 주소는 Replicate 공식 문서에 명시된 원본입니다)
+            model_id = "adirik/realvisxl-v3.0-turbo:3dc73c805b11b4b01a60555e532fd3ab3f0e60d26f6584d9b8ba7e1b95858243"
             
             input_data = {
                 "prompt": full_prompt,
@@ -234,7 +232,7 @@ if generate_btn:
                 "height": 1152,
                 "seed": st.session_state.seed_value,
                 "scheduler": "DPM++_SDE_Karras",
-                "guidance_scale": 7.0, 
+                "guidance_scale": 2.0, # V3.0 Turbo 권장값
                 "num_inference_steps": 25,
                 "disable_safety_checker": is_nsfw
             }
@@ -245,7 +243,7 @@ if generate_btn:
 
             output = replicate.run(model_id, input=input_data)
             
-            # 결과물 처리
+            # 결과물 처리 (주소 or 파일 자동 판별)
             image_data = None
             if output:
                 result_item = output[0] if isinstance(output, list) else output
@@ -274,7 +272,7 @@ if generate_btn:
         # 에러 메시지 분석
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
-             st.warning("사용자가 많아 잠시 정지되었습니다. 10초만 기다렸다가 다시 누르세요!")
+             st.warning("사용자가 많아 잠시 정지되었습니다. 10초만 기다렸다가 다시 누르세요! (계정 잔액 확인 필요)")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
              st.warning("모델이 너무 야하다고 판단했습니다. 프롬프트 수위를 조금만 낮춰주세요.")

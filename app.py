@@ -7,8 +7,8 @@ import time
 
 # --- 페이지 설정 ---
 st.set_page_config(
-    page_title="K-Web Pro Ultimate",
-    page_icon="🔥",
+    page_title="K-Web Pro Ultimate HQ",
+    page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -76,14 +76,15 @@ with st.sidebar:
 # ===========================
 # 2. 메인 화면
 # ===========================
-st.title("🔥 K-Web Pro Ultimate")
-st.caption("RealVisXL V3.0 Turbo (Official Version)")
+st.title("💎 K-Web Pro Ultimate HQ")
+st.caption("RealVisXL V4.0 Standard (초고화질 엔진 적용)")
 
 col_left, col_right = st.columns([1, 1])
 
-# [중요] 변수 미리 초기화 (NameError 완벽 방지)
-final_style_keywords = "photorealistic, 8k uhd" 
+# [중요] 변수 미리 초기화 (에러 방지)
+final_style_keywords = "" 
 nsfw_keywords = ""
+final_view_angle = "" # 시점 변수 추가
 final_gender = ""
 final_hair = ""
 final_body = ""
@@ -102,25 +103,33 @@ with col_left:
             horizontal=True
         )
         
-        # 19금 모드
         is_nsfw = st.checkbox("🔞 19금 모드 적용 (Enable NSFW)", value=False)
         
-        # 스타일에 따른 키워드 설정
+        # 스타일에 따른 키워드 설정 (2D 차별화 강화)
         if "실사" in art_category:
             style_detail = st.selectbox("분위기", ["영화 같은 (Cinematic)", "SNS 감성 (Candid)", "스튜디오 조명 (Studio lighting)"])
-            final_style_keywords = "photorealistic, realistic, 8k uhd, raw photo, dslr, high quality, film grain"
+            final_style_keywords = f"photorealistic, realistic, 8k uhd, raw photo, sharp focus, dslr, high quality, film grain, {extract_eng(style_detail)}"
             
             if is_nsfw:
                 nsfw_keywords = "nsfw, sexy, nude, erotic, raw photo, realistic skin texture, detailed skin"
             else:
                 nsfw_keywords = ""
                 
-        else: # 2D
-            style_detail = st.selectbox("분위기", ["웹툰 (Webtoon)", "일본 애니 (Anime)", "지브리 (Ghibli)", "유화 (Oil Painting)"])
-            final_style_keywords = "2D, illustration, anime style, flat color, digital art"
-            
+        else: # 2D (스타일별로 키워드를 확실하게 분리)
+            style_detail = st.selectbox("분위기", ["웹툰 스타일 (Webtoon)", "일본 애니메이션 (Anime)", "지브리 스튜디오 (Studio Ghibli)", "유화 (Oil Painting)"])
+            eng_detail = extract_eng(style_detail)
+
+            if "Webtoon" in eng_detail:
+                final_style_keywords = "Korean webtoon style, digital illustration, clean lines, vibrant colors, manhwa aesthetic"
+            elif "Anime" in eng_detail:
+                 final_style_keywords = "Japanese anime style, 2D cel shading, detailed background, anime screencap, high quality animation"
+            elif "Ghibli" in eng_detail:
+                 final_style_keywords = "Studio Ghibli style, watercolor texture, soft colors, hand drawn, beautiful fantasy landscape, Hayao Miyazaki"
+            elif "Oil Painting" in eng_detail:
+                 final_style_keywords = "Oil painting, traditional art, visible brushstrokes, canvas texture, rich colors"
+
             if is_nsfw:
-                nsfw_keywords = "nsfw, hentai, ecchi, anime style, explicit"
+                nsfw_keywords = "nsfw, hentai, ecchi, explicit, mature content"
             else:
                 nsfw_keywords = ""
 
@@ -150,17 +159,25 @@ with col_left:
         final_hair = f"{extract_eng(hair_style)} hair, {extract_eng(hair_color)} color"
         final_body = {"마름": "slim", "보통": "fit", "글래머/근육질": "curvy, voluptuous, muscular"}[body_type]
         
-        custom_face = st.text_input("✨ 외모 직접 입력 (선택사항)", placeholder="예: Blue eyes, flushing face, sweaty skin")
+        custom_face = st.text_input("✨ 외모 직접 입력 (선택사항)", placeholder="예: Blue eyes, flushing face, detailed skin")
 
 with col_right:
     st.subheader("2️⃣ 포즈 & 패션")
     
+    # [복구 완료] 시점(Viewpoint) 선택 기능
+    with st.container(border=True):
+        st.markdown("#### 🎥 시점 (Viewpoint)")
+        view_angle = st.selectbox("카메라 앵글", 
+            ["정면 (Front view)", "측면 (Side view)", "로우 앵글 (Low angle, from below)", "하이 앵글 (High angle, from above)", "셀카 구도 (Selfie shot)", "전신 샷 (Full body shot)"]
+        )
+        final_view_angle = extract_eng(view_angle)
+
     with st.container(border=True):
         st.markdown("#### 🧘 자세 (Pose)")
         pose_options = [
             "서 있는 (Standing)", "앉아 있는 (Sitting)", "누워 있는 (Lying down)",
             "무릎 꿇은 (Kneeling)", "네발 기기 (All fours)", "뒤태 (Back view)",
-            "다리 꼬기 (Crossed legs)", "셀카 찍는 (Taking a selfie)", "✨ 직접 입력 (Custom)"
+            "다리 꼬기 (Crossed legs)", "✨ 직접 입력 (Custom)"
         ]
         selected_pose = st.selectbox("자세 선택", pose_options)
         
@@ -184,7 +201,7 @@ with col_right:
         else:
             final_outfit = extract_eng(selected_outfit)
 
-    background_text = st.text_area("배경 묘사", placeholder="예: 침실, 호텔, 해변, 비 내리는 거리", height=80)
+    background_text = st.text_area("배경 묘사", placeholder="예: 침실, 호텔, 해변, 비 내리는 거리, 디테일한 배경", height=80)
     
     with st.expander("📸 사진 변형 (Img2Img)", expanded=False):
         uploaded_file = st.file_uploader("참조 이미지", type=["jpg", "png", "jpeg"])
@@ -194,36 +211,37 @@ with col_right:
             strength_val = st.slider("변경 강도", 0.1, 1.0, 0.65)
 
     st.divider()
-    generate_btn = st.button("✨ 이미지 생성 (Generate)")
+    generate_btn = st.button("💎 초고화질 이미지 생성 (Generate HQ)")
 
 # ===========================
 # 3. 로직 및 실행
 # ===========================
 if generate_btn:
     
-    # 1. 부정 프롬프트 설정
+    # 1. 부정 프롬프트 설정 (화질 저하 요소를 강력하게 배제)
+    common_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, ugly, deformed"
+    
     if is_nsfw:
-        # 필터 해제: nsfw 단어 허용
-        base_negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+        base_negative = common_negative
     else:
-        # 필터 적용: nsfw 단어 강력 차단
-        base_negative = "nsfw, nude, naked, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+        base_negative = "nsfw, nude, naked, explicit, " + common_negative
 
-    # 2. 최종 프롬프트 조립
+    # 2. 최종 프롬프트 조립 (시점 추가됨)
     full_prompt = (
-        f"Best quality, masterpiece, {final_style_keywords}, {nsfw_keywords}. "
+        f"Best quality, masterpiece, sharp focus, high detailed, {final_style_keywords}, {nsfw_keywords}. "
+        f"{final_view_angle}, {final_pose}, " # 시점과 자세
         f"{final_gender}, {final_hair}, {final_body} body. "
         f"{custom_face}. "
-        f"{final_pose}, "
         f"wearing {final_outfit}. "
         f"Background is {background_text}."
     )
     
     try:
-        with st.spinner("AI가 렌더링 중입니다... (약 10초) 🎨"):
+        with st.spinner("💎 초고화질 렌더링 중... (약 15~25초 소요) 🎨"):
             
-            # [최종 확인] adirik 공식 버전 (이 주소는 Replicate 공식 문서에 명시된 원본입니다)
-            model_id = "adirik/realvisxl-v3.0-turbo:3dc73c805b11b4b01a60555e532fd3ab3f0e60d26f6584d9b8ba7e1b95858243"
+            # [엔진 교체] RealVisXL V4.0 Standard (최고 화질 버전)
+            # Lightning이나 Turbo보다 느리지만 화질이 훨씬 뛰어남
+            model_id = "konieshadow/realvisxl-v4.0:4f2913076880017127c59c5d070e309255a025687352f2052445e4125a25034c"
             
             input_data = {
                 "prompt": full_prompt,
@@ -231,9 +249,10 @@ if generate_btn:
                 "width": 768, 
                 "height": 1152,
                 "seed": st.session_state.seed_value,
-                "scheduler": "DPM++_SDE_Karras",
-                "guidance_scale": 2.0, # V3.0 Turbo 권장값
-                "num_inference_steps": 25,
+                # 고화질 모델을 위한 파라미터 설정
+                "scheduler": "K_EULER_ANCESTRAL", 
+                "guidance_scale": 7.0, 
+                "num_inference_steps": 35, # 스텝 수를 높여 디테일 향상
                 "disable_safety_checker": is_nsfw
             }
 
@@ -243,7 +262,6 @@ if generate_btn:
 
             output = replicate.run(model_id, input=input_data)
             
-            # 결과물 처리 (주소 or 파일 자동 판별)
             image_data = None
             if output:
                 result_item = output[0] if isinstance(output, list) else output
@@ -256,26 +274,25 @@ if generate_btn:
                 if image_data:
                     st.balloons()
                     st.image(image_data, use_container_width=True)
-                    st.success(f"완성! (NSFW: {'ON' if is_nsfw else 'OFF'})")
+                    st.success(f"초고화질 완성! (NSFW: {'ON' if is_nsfw else 'OFF'})")
                     
                     st.download_button(
-                        label="⬇️ 이미지 저장",
+                        label="⬇️ 고화질 이미지 저장",
                         data=io.BytesIO(image_data),
-                        file_name=f"kweb_{st.session_state.seed_value}.png",
+                        file_name=f"kweb_hq_{st.session_state.seed_value}.png",
                         mime="image/png"
                     )
                     
-                    with st.expander("🔍 AI가 받은 주문서"):
+                    with st.expander("🔍 AI 주문서 확인"):
                         st.code(full_prompt)
 
     except replicate.exceptions.ReplicateError as e:
-        # 에러 메시지 분석
         if "429" in str(e) or "throttled" in str(e):
              st.error("🚦 속도 제한 (429 Error):")
-             st.warning("사용자가 많아 잠시 정지되었습니다. 10초만 기다렸다가 다시 누르세요! (계정 잔액 확인 필요)")
+             st.warning("고화질 생성은 서버 부하가 큽니다. 20초 정도 쉬었다가 다시 눌러주세요!")
         elif "NSFW" in str(e):
              st.error("🚨 NSFW 차단됨:")
-             st.warning("모델이 너무 야하다고 판단했습니다. 프롬프트 수위를 조금만 낮춰주세요.")
+             st.warning("V4.0 모델은 검열이 조금 더 강할 수 있습니다. 프롬프트를 수정해보세요.")
         else:
              st.error(f"API 에러: {e}")
     except Exception as e:
